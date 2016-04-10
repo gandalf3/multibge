@@ -6,7 +6,7 @@ from queue import Queue
 import socket
 import uuid
 
-port = 43846
+port = 32453
 
 class Server():
 	def __init__(self, port):
@@ -32,8 +32,8 @@ class Server():
 			while True:
 				data = conn.recv(1024)
 				if data:
-					with lock:
-						print("sending:", data)
+					with self.lock:
+						print("sending data")
 						conn.sendall(data)
 				else:
 					break
