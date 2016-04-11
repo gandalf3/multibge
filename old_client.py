@@ -69,7 +69,7 @@ def pickle_prep(m):
         print(list_representation)
         return list_representation
     else:
-        return m    
+        return m
 
 def main(cont):
     own = cont.owner
