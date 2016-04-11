@@ -51,14 +51,14 @@ class ClientProtocol(asyncio.Protocol):
                     other_client["object"].worldScale = scale
             
         if unpickled_data['action'] == 'CONNECT':
-            object = bge.logic.getCurrentScene().addObject('RemoteSuzanne')
 
             # say hi to newcomers, but ignore greetings from clients we already know about
             # this ought to be done on the server really, but for now just make it work(tm)
-            if next((other_uuid for other_uuid in other_clients if other_uuid == sender_uuid), None):
+            if any(client['uuid'] == sender_uuid for client in other_clients):
                 print(sender_uuid, "has reconnected")
                 pass
             else:
+                object = bge.logic.getCurrentScene().addObject('RemoteSuzanne')
                 other_clients.append({"uuid": sender_uuid, "object": object})
                 print("greetings", sender_uuid)
                 conn.write(pickle.dumps(
