@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 
+import pickle
 import asyncio
+
+port = 9999
 
 connected_clients = []
 
@@ -12,16 +15,17 @@ class EchoServerClientProtocol(asyncio.Protocol):
         connected_clients.append(self)
 
     def data_received(self, data):
-        message = data.decode()
+        message = pickle.loads(data)
         print('Data received: {!r}'.format(message))
 
         print('Send: {!r}'.format(message))
         for client in connected_clients:
-            client.transport.write(data)
+            if client != self:
+                client.transport.write(data)
 
 loop = asyncio.get_event_loop()
 # Each client connection will create a new protocol instance
-coro = loop.create_server(EchoServerClientProtocol, '127.0.0.1', 8888)
+coro = loop.create_server(EchoServerClientProtocol, '127.0.0.1', port)
 server = loop.run_until_complete(coro)
 
 # Serve requests until Ctrl+C is pressed
