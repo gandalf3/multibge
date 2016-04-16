@@ -8,16 +8,14 @@ from mathutils import Matrix
 
 port = 9999
 
-other_clients = []
-ownuuid = uuid.uuid4()
-conn = None
-
 class ClientProtocol(asyncio.Protocol):
     def __init__(self, loop):
         self.loop = loop
+	self.conn = None
+	self.other_clients = []
+	self.uuid = uuid.uuid4()
 
     def connection_made(self, transport):
-        global conn
         transport.write(pickle.dumps(
             {
             "action": "CONNECT",
@@ -25,10 +23,9 @@ class ClientProtocol(asyncio.Protocol):
             }))
         print("Connected to server")
         print("storing connection")
-        conn = transport
+        self.conn = transport
 
     def data_received(self, data):
-        global other_clients, conn
         unpickled_data = pickle.loads(data)
         #print('Data received: {!r}'.format(unpickled_data))
 
@@ -43,7 +40,7 @@ class ClientProtocol(asyncio.Protocol):
                 (loc, rot, scale) = Matrix(val).decompose()
             
             #print("other clients", other_clients)
-            for other_client in other_clients:
+            for other_client in self.other_clients:
                 if other_client["uuid"] == sender_uuid:
                     #other_client["object"][prop] = Matrix(val)
                     other_client["object"].worldPosition = loc
@@ -54,17 +51,17 @@ class ClientProtocol(asyncio.Protocol):
 
             # say hi to newcomers, but ignore greetings from clients we already know about
             # this ought to be done on the server really, but for now just make it work(tm)
-            if any(client['uuid'] == sender_uuid for client in other_clients):
+            if any(client['uuid'] == sender_uuid for client in self.other_clients):
                 print(sender_uuid, "has reconnected")
                 pass
             else:
                 object = bge.logic.getCurrentScene().addObject('RemoteSuzanne')
-                other_clients.append({"uuid": sender_uuid, "object": object})
+                self.other_clients.append({"uuid": sender_uuid, "object": object})
                 print("greetings", sender_uuid)
-                conn.write(pickle.dumps(
+                self.conn.write(pickle.dumps(
                     {
                     "action": "CONNECT",
-                    "uuid": ownuuid,
+                    "uuid": self.uuid,
                     }))
 
 
