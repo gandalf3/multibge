@@ -11,9 +11,9 @@ port = 9999
 class ClientProtocol(asyncio.Protocol):
     def __init__(self, loop):
         self.loop = loop
-	self.conn = None
-	self.other_clients = []
-	self.uuid = uuid.uuid4()
+        self.conn = None
+        self.other_clients = []
+        self.uuid = uuid.uuid4()
 
     def connection_made(self, transport):
         transport.write(pickle.dumps(
@@ -71,10 +71,6 @@ class ClientProtocol(asyncio.Protocol):
         self.loop.stop()
         
         
-loop = asyncio.get_event_loop()
-coro = loop.create_connection(lambda: ClientProtocol(loop), '127.0.0.1', port)
-task = asyncio.Task(coro)
-
 def pickle_prep(m):
     # construct a pure python list representation of an iterable thingy (matrix, vector, etc)
     
@@ -86,16 +82,28 @@ def pickle_prep(m):
     else:
         return m
     
+@asyncio.coroutine
+def send_message(message, protocol):
+    yield from protocol.send_message(message)
 
 def main(cont):
-    global conn
     own = cont.owner
+    
+    print("wussup")
+    if "MultiBGE_init" not in own:
+        loop = asyncio.get_event_loop()
+        coro = loop.create_connection(lambda: ClientProtocol(loop), '127.0.0.1', port)
+        task = asyncio.Task(coro)
+        
+        transport, protocol = loop.run_until_complete(coro)
+
+        own['init'] = True
     
     loop.stop()
     loop.run_forever()
     
-    if conn:
-        conn.write(pickle.dumps(
+    if self.conn:
+        self.conn.write(pickle.dumps(
             {
             "action": "UPDATE",
             "uuid": ownuuid,
