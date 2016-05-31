@@ -8,22 +8,53 @@ from mathutils import Matrix
 
 port = 9999
 
+def compose_message(message, recipient="CLIENT"):
+    """
+    Take an object of the form {"action": "", "uuid"} and pickle it.
+    Also add timestamp
+    """
+    
+    #message.append("timestamp": bge.logic.getFrameTime())
+    
+#    if recipient != "client":
+#        return recipient + pickle.dumps(message)
+#    else:
+    
+    return pickle.dumps(message)
+    
+    
+def server_greeting():
+    greeting = compose_message(
+    {
+        "recipient": "SERVER",
+        "action": "CONNECT"
+    }
+    )
+    
+
 class ClientProtocol(asyncio.Protocol):
     def __init__(self, loop):
         self.loop = loop
         self.conn = None
-        self.other_clients = []
         self.uuid = uuid.uuid4()
-
+        self.other_clients = []
+        
     def connection_made(self, transport):
-        transport.write(pickle.dumps(
-            {
-            "action": "CONNECT",
-            "uuid": ownuuid,
-            }))
         print("Connected to server")
-        print("storing connection")
+        
+        m = compose_message(
+        {
+            "action": "CONNECT",
+            "uuid": self.uuid,
+        })
+        
+        transport.write(m)
+        
         self.conn = transport
+        
+    # @asyncio.coroutine
+    # def send_message(self, data):
+    #     self.conn.write(data)
 
     def data_received(self, data):
         unpickled_data = pickle.loads(data)
@@ -81,33 +112,30 @@ def pickle_prep(m):
         return list_representation
     else:
         return m
-    
-@asyncio.coroutine
-def send_message(message, protocol):
-    yield from protocol.send_message(message)
+        
 
 def main(cont):
     own = cont.owner
     
-    print("wussup")
-    if "MultiBGE_init" not in own:
-        loop = asyncio.get_event_loop()
-        coro = loop.create_connection(lambda: ClientProtocol(loop), '127.0.0.1', port)
-        task = asyncio.Task(coro)
+    if "client_init" not in own:
+        own.loop = asyncio.get_event_loop()
+        coro = own.loop.create_connection(lambda: ClientProtocol(own.loop), '127.0.0.1', port)
+        #task = asyncio.Task(coro)
         
-        transport, protocol = loop.run_until_complete(coro)
+        own.transport, own.protocol = own.loop.run_until_complete(coro)
 
-        own['init'] = True
+        own['client_init'] = True
+        
+    own.loop.stop()
+    own.loop.run_forever()
+    #print(dir(own))
     
-    loop.stop()
-    loop.run_forever()
-    
-    if self.conn:
-        self.conn.write(pickle.dumps(
-            {
-            "action": "UPDATE",
-            "uuid": ownuuid,
-            "property": "worldTransform",
-            "value": pickle_prep(own.worldTransform.copy()),
-            "value_type": "Matrix",
-            }))
+    #if onwtransport:
+    own.transport.write(compose_message(
+        {
+        "action": "UPDATE",
+        "uuid": own.protocol.uuid,
+        "property": "worldTransform",
+        "value": pickle_prep(own.worldTransform.copy()),
+        "value_type": "Matrix",
+        }))

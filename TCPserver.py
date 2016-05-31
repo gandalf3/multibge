@@ -2,12 +2,14 @@
 
 import pickle
 import asyncio
+import uuid
 
 port = 9999
 
 connected_clients = []
 
-class EchoServerClientProtocol(asyncio.Protocol):
+class ServerProtocol(asyncio.Protocol):
+    
     def connection_made(self, transport):
         peername = transport.get_extra_info('peername')
         print('Connection from {}'.format(peername))
@@ -16,16 +18,25 @@ class EchoServerClientProtocol(asyncio.Protocol):
 
     def data_received(self, data):
         message = pickle.loads(data)
+        
         print('Data received: {!r}'.format(message))
-
+        
+        #if message['recipient'] and message['recipient'] == 'SERVER':
+        #    if message['action'] == 'CONNECT':
+                
+        
+        
+        
         print('Send: {!r}'.format(message))
         for client in connected_clients:
             if client != self:
                 client.transport.write(data)
+                
+    #def connection_lost(self):
 
 loop = asyncio.get_event_loop()
 # Each client connection will create a new protocol instance
-coro = loop.create_server(EchoServerClientProtocol, '127.0.0.1', port)
+coro = loop.create_server(ServerProtocol, '127.0.0.1', port)
 server = loop.run_until_complete(coro)
 
 # Serve requests until Ctrl+C is pressed
