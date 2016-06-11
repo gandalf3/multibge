@@ -8,31 +8,8 @@ from mathutils import Matrix
 
 port = 9999
 
-def compose_message(message, recipient="CLIENT"):
-    """
-    Take an object of the form {"action": "", "uuid"} and pickle it.
-    Also add timestamp
-    """
-    
-    #message.append("timestamp": bge.logic.getFrameTime())
-    
-#    if recipient != "client":
-#        return recipient + pickle.dumps(message)
-#    else:
-    
-    return pickle.dumps(message)
-    
-    
-def server_greeting():
-    greeting = compose_message(
-    {
-        "recipient": "SERVER",
-        "action": "CONNECT"
-    }
-    )
-    
 
-class ClientProtocol(asyncio.Protocol):
+class multibgeClientProtocol(asyncio.Protocol):
     def __init__(self, loop):
         self.loop = loop
         self.conn = None
@@ -51,14 +28,12 @@ class ClientProtocol(asyncio.Protocol):
         transport.write(m)
         
         self.conn = transport
-        
-    # @asyncio.coroutine
-    # def send_message(self, data):
-    #     self.conn.write(data)
 
     def data_received(self, data):
         unpickled_data = pickle.loads(data)
         #print('Data received: {!r}'.format(unpickled_data))
+        
+        
 
         sender_uuid = unpickled_data['uuid']
 
@@ -102,40 +77,46 @@ class ClientProtocol(asyncio.Protocol):
         self.loop.stop()
         
         
-def pickle_prep(m):
-    # construct a pure python list representation of an iterable thingy (matrix, vector, etc)
+class multibgeClient(bge.types.GameObject):
+    def __init__(self, own):
+        # setup asyncio loop
+        self.loop = asyncio.get_event_loop()
+        
+        self.protocol = None
+        self.transport = None
+        
+        self.attributes = []
+        self.objects = []
     
-    list_representation = []
-    if hasattr(m, '__len__'):
-        for elem in m:
-            list_representation.append(pickle_prep(elem))
-        return list_representation
-    else:
-        return m
+    def connect(self, address, port):
+        coro = own.loop.create_connection(lambda: multibgeClientProtocol(own.loop), address, port)
+        self.transport, self.protocol = own.loop.run_until_complete(coro)
+
+    def sync(self):
+        for attribute in attributes:
+            self.transport.write(compose_message({
+                "action": "UPDATE",
+                "uuid": own.protocol.uuid,
+                "property": "worldTransform",
+                "value": pickle_prep(own.worldTransform.copy()),
+                "value_type": "Matrix",
+                }))
+        
+    def main(self):
+        # run asyncio loop without blocking game loop
+        own.loop.stop()
+        own.loop.run_forever()
         
 
 def main(cont):
     own = cont.owner
     
     if "client_init" not in own:
-        own.loop = asyncio.get_event_loop()
-        coro = own.loop.create_connection(lambda: ClientProtocol(own.loop), '127.0.0.1', port)
-        #task = asyncio.Task(coro)
-        
-        own.transport, own.protocol = own.loop.run_until_complete(coro)
+        ownclient = multibgeClient(own)
 
         own['client_init'] = True
         
-    own.loop.stop()
-    own.loop.run_forever()
-    #print(dir(own))
     
-    #if onwtransport:
-    own.transport.write(compose_message(
-        {
-        "action": "UPDATE",
-        "uuid": own.protocol.uuid,
-        "property": "worldTransform",
-        "value": pickle_prep(own.worldTransform.copy()),
-        "value_type": "Matrix",
-        }))
+    
+    #if own.transport:
+    own
